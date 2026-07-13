@@ -40,9 +40,12 @@ export function ChartShell({
       chartKind={chartKind}
       animate={animate}
     >
+      {/* Fill the box you're given. Hardcoding a height here (this used to be h-64)
+          silently ignores the caller's sizing and overflows whatever wraps it, so
+          the caller sizes the parent — as with recharts' ResponsiveContainer. */}
       <div
         ref={ref}
-        className={`relative h-64 w-full ${className}`.trim()}
+        className={`relative h-full w-full ${className}`.trim()}
       >
         <EngraveCanvas />
         <svg

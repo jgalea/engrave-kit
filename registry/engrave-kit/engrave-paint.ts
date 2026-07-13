@@ -124,6 +124,52 @@ export function hatch(
 }
 
 /**
+ * A single cut following a curve. This is what a line series is: an engraver
+ * drawing a trend doesn't hatch the ground beneath it, they cut one line.
+ *
+ * The width eases in and out at the ends rather than starting abruptly, which is
+ * how a burin actually enters and leaves the plate.
+ */
+export function strokeCurve(
+  c: CanvasRenderingContext2D,
+  bounds: { x: number; y: number; width: number; height: number },
+  yAt: (x: number) => number,
+  opts: { color: Rgb; width?: number; alpha?: number }
+): void {
+  const { color, width = 1.6, alpha = 1 } = opts
+  if (alpha <= 0) return
+
+  const x0 = bounds.x
+  const x1 = bounds.x + bounds.width
+  const step = 1
+
+  c.save()
+  c.lineCap = "round"
+  c.lineJoin = "round"
+  c.strokeStyle = rgb(color)
+
+  for (let x = x0; x < x1; x += step) {
+    const t = (x - x0) / Math.max(1, bounds.width)
+    // Taper the first and last few percent so the cut enters and leaves cleanly.
+    const ease = Math.min(1, Math.min(t, 1 - t) / 0.04)
+    const w = width * (0.55 + 0.45 * ease) * alpha
+    if (w <= 0) continue
+
+    const ya = yAt(x)
+    const yb = yAt(Math.min(x1, x + step))
+    if (!Number.isFinite(ya) || !Number.isFinite(yb)) continue
+
+    c.lineWidth = w
+    c.beginPath()
+    c.moveTo(x, ya)
+    c.lineTo(Math.min(x1, x + step), yb)
+    c.stroke()
+  }
+
+  c.restore()
+}
+
+/**
  * Tone that deepens with distance below a curve — the default for area fills.
  * `depth` is how far below the line the ink reaches full black; shallower values
  * make a heavier, flatter fill.

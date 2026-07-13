@@ -1,5 +1,6 @@
 export {
   hatch,
+  strokeCurve,
   toneBelowCurve,
   toneBlock,
   anglesForSeries,

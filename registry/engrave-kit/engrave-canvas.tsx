@@ -9,6 +9,7 @@ import {
   easeOutCubic,
   hatch,
   prefersReducedMotion,
+  strokeCurve,
   toneBlock,
 } from "./engrave-paint"
 import { resolveColor } from "./palette"
@@ -132,9 +133,22 @@ export function EngraveCanvas() {
         })
 
         const isLine = entry.kind === "line" || chartKind === "line"
-        const depth = isLine
-          ? Math.max(12, plot.height * 0.08)
-          : Math.max(18, plot.height * 0.14)
+
+        if (isLine) {
+          // A line is a cut, not a fill. Hatching it to the baseline (which is what
+          // this used to do) turns a trend line into a solid mass and buries
+          // whatever it's drawn over. Stroke the curve and stop.
+          c.save()
+          strokeCurve(c, plot, curves.yTop, {
+            color,
+            width: 1.6,
+            alpha: reveal,
+          })
+          c.restore()
+          return
+        }
+
+        const depth = Math.max(18, plot.height * 0.14)
 
         c.save()
         traceAreaPath(
