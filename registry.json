@@ -1,0 +1,23 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "engrave-kit",
+  "homepage": "https://github.com/jgalea/engrave-kit",
+  "items": [
+    {
+      "name": "engrave-kit",
+      "type": "registry:component"
+    },
+    {
+      "name": "area-chart",
+      "type": "registry:component"
+    },
+    {
+      "name": "line-chart",
+      "type": "registry:component"
+    },
+    {
+      "name": "bar-chart",
+      "type": "registry:component"
+    }
+  ]
+}

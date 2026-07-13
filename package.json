@@ -1,0 +1,41 @@
+{
+  "name": "engrave-kit",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "description": "React chart library that renders cartesian charts as 19th-century copperplate engravings on canvas",
+  "keywords": [
+    "charts",
+    "react",
+    "canvas",
+    "engraving",
+    "hatching",
+    "shadcn",
+    "shadcn-registry",
+    "visualization"
+  ],
+  "homepage": "https://github.com/jgalea/engrave-kit",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jgalea/engrave-kit.git"
+  },
+  "author": "Jean Galea",
+  "scripts": {
+    "registry": "node scripts/build-registry.mjs",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run registry"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "dependencies": {
+    "d3-scale": "^4.0.2",
+    "d3-shape": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/d3-scale": "^4.0.8",
+    "@types/d3-shape": "^3.1.7",
+    "@types/react": "^18.3.12",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>engrave-kit demo</title>
+  <style>
+    :root {
+      --background: #f8f6f1;
+      --foreground: #181816;
+      --muted-foreground: #6b7280;
+      --border: #e5e7eb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Georgia, "Times New Roman", serif;
+      background: var(--background);
+      color: var(--foreground);
+      padding: 2rem;
+      line-height: 1.4;
+    }
+    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted-foreground); font-size: 0.9rem; margin-bottom: 2rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+    .card h2 { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: 0.06em; }
+    .chart-wrap { position: relative; width: 100%; height: 220px; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .spark { grid-column: 1 / -1; }
+    .spark .chart-wrap { height: 100px; }
+    .axis-label { font-size: 10px; fill: var(--muted-foreground); }
+    .legend { display: flex; gap: 12px; justify-content: flex-end; font-size: 11px; color: var(--muted-foreground); margin-bottom: 6px; }
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  </style>
+</head>
+<body>
+  <h1>engrave-kit</h1>
+  <p class="subtitle">Copperplate cartesian charts — straight hatch, swelling line width, zero jitter.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Revenue &amp; Costs</h2>
+      <div class="legend" id="area-legend"></div>
+      <div class="chart-wrap"><canvas id="area-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Quarterly Shipments</h2>
+      <div class="chart-wrap"><canvas id="bar-chart"></canvas></div>
+    </div>
+    <div class="card spark">
+      <h2>Signal Strength (7d)</h2>
+      <div class="chart-wrap"><canvas id="line-chart"></canvas></div>
+    </div>
+  </div>
+
+  <script>
+    // --- painter (ported from engrave-paint.ts) ---
+    const DEG = Math.PI / 180
+
+    const rgb = ([r, g, b], a = 1) =>
+      a >= 1 ? `rgb(${r},${g},${b})` : `rgba(${r},${g},${b},${a})`
+
+    function anglesForSeries(index) {
+      switch (index % 3) {
+        case 0: return [-38]
+        case 1: return [38]
+        default: return [-38, 38]
+      }
+    }
+
+    function hatch(c, bounds, tone, opts) {
+      const {
+        angles,
+        spacing = 5,
+        step = 2.2,
+        minWidth = 0.35,
+        maxWidth = 2.0,
+        floor = 0.04,
+        color,
+        alpha = 1,
+      } = opts
+      if (alpha <= 0) return
+
+      const { x: bx, y: by, width: bw, height: bh } = bounds
+      const cx = bx + bw / 2
+      const cy = by + bh / 2
+      const reach = Math.hypot(bw, bh) / 2 + spacing
+
+      c.save()
+      c.lineCap = "round"
+      c.strokeStyle = rgb(color)
+
+      for (const deg of angles) {
+        const cos = Math.cos(deg * DEG)
+        const sin = Math.sin(deg * DEG)
+        for (let off = -reach; off <= reach; off += spacing) {
+          for (let t = -reach; t < reach; t += step) {
+            const x1 = cx + t * cos - off * sin
+            const y1 = cy + t * sin + off * cos
+            if (x1 < bx || x1 > bx + bw || y1 < by || y1 > by + bh) continue
+            const i = tone(x1, y1)
+            if (i <= floor) continue
+            const x2 = cx + (t + step) * cos - off * sin
+            const y2 = cy + (t + step) * sin + off * cos
+            c.lineWidth = (minWidth + i * (maxWidth - minWidth)) * alpha
+            c.beginPath()
+            c.moveTo(x1, y1)
+            c.lineTo(x2, y2)
+            c.stroke()
+          }
+        }
+      }
+      c.restore()
+    }
+
+    function toneBelowCurve(yAt, baseline, depth) {
+      return (x, y) => {
+        const top = yAt(x)
+        if (y < top || y > baseline) return 0
+        const i = (y - top) / depth
+        return i > 1 ? 1 : i
+      }
+    }
+
+    function toneBlock(top, bottom, lift = 0.35) {
+      const span = Math.max(1, bottom - top)
+      return (_x, y) => {
+        if (y < top || y > bottom) return 0
+        return lift + (1 - lift) * ((y - top) / span)
+      }
+    }
+
+    const easeOutCubic = (t) => 1 - (1 - t) ** 3
+
+    function backingSize(width, height, cap = 2) {
+      const dpr = Math.min(window.devicePixelRatio || 1, cap)
+      return { width: Math.round(width * dpr), height: Math.round(height * dpr), dpr }
+    }
+
+    // --- minimal scales ---
+    const PALETTE = {
+      ink: [18, 18, 22],
+      crimson: [120, 28, 36],
+      indigo: [36, 44, 92],
+      moss: [48, 72, 44],
+      ochre: [148, 108, 36],
+      slate: [72, 80, 92],
+    }
+
+    function linearScale(domain, range) {
+      const [d0, d1] = domain
+      const [r0, r1] = range
+      return (v) => r0 + ((v - d0) / (d1 - d0 || 1)) * (r1 - r0)
+    }
+
+    function makeBandScale(domain, range, padding = 0.2) {
+      const step = (range[1] - range[0]) / domain.length
+      const bw = step * (1 - padding)
+      const map = new Map()
+      domain.forEach((d, i) => map.set(d, range[0] + i * step))
+      return {
+        pos: (d) => map.get(d),
+        bandwidth: () => bw,
+        center: (d) => map.get(d) + bw / 2,
+      }
+    }
+
+    function makePointScale(domain, range) {
+      const n = domain.length
+      const step = n > 1 ? (range[1] - range[0]) / (n - 1) : 0
+      const map = new Map()
+      domain.forEach((d, i) => map.set(d, range[0] + i * step))
+      return {
+        center: (d) => map.get(d),
+      }
+    }
+
+    const MARGINS = { top: 20, right: 16, bottom: 28, left: 40 }
+
+    function setupCanvas(canvas) {
+      const wrap = canvas.parentElement
+      const w = wrap.clientWidth
+      const h = wrap.clientHeight
+      const { width: bw, height: bh, dpr } = backingSize(w, h)
+      canvas.width = bw
+      canvas.height = bh
+      canvas.style.width = w + "px"
+      canvas.style.height = h + "px"
+      const ctx = canvas.getContext("2d")
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      return { ctx, w, h }
+    }
+
+    function drawAxes(ctx, plot, xLabels, yTicks, yScale, xCenterFn) {
+      ctx.save()
+      ctx.strokeStyle = "rgba(24,24,22,0.35)"
+      ctx.lineWidth = 1
+      ctx.fillStyle = "#6b7280"
+      ctx.font = "10px Georgia, serif"
+      ctx.textAlign = "center"
+
+      const baseY = plot.y + plot.height
+      ctx.beginPath()
+      ctx.moveTo(plot.x, baseY)
+      ctx.lineTo(plot.x + plot.width, baseY)
+      ctx.stroke()
+
+      const step = Math.ceil(xLabels.length / 6)
+      xLabels.forEach((label, i) => {
+        if (i % step !== 0 && i !== xLabels.length - 1) return
+        const x = xCenterFn(label)
+        ctx.beginPath()
+        ctx.moveTo(x, baseY)
+        ctx.lineTo(x, baseY + 4)
+        ctx.stroke()
+        ctx.fillText(label, x, baseY + 16)
+      })
+
+      ctx.textAlign = "right"
+      ctx.beginPath()
+      ctx.moveTo(plot.x, plot.y)
+      ctx.lineTo(plot.x, baseY)
+      ctx.stroke()
+
+      yTicks.forEach((tick) => {
+        const y = yScale(tick)
+        ctx.setLineDash([2, 4])
+        ctx.globalAlpha = 0.08
+        ctx.beginPath()
+        ctx.moveTo(plot.x, y)
+        ctx.lineTo(plot.x + plot.width, y)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.globalAlpha = 1
+        ctx.beginPath()
+        ctx.moveTo(plot.x - 4, y)
+        ctx.lineTo(plot.x, y)
+        ctx.stroke()
+        ctx.fillText(String(tick), plot.x - 8, y + 3)
+      })
+      ctx.restore()
+    }
+
+    function interpolateCurve(points) {
+      return (x) => {
+        if (!points.length) return 0
+        if (x <= points[0].x) return points[0].y
+        if (x >= points[points.length - 1].x) return points[points.length - 1].y
+        for (let i = 0; i < points.length - 1; i++) {
+          const a = points[i], b = points[i + 1]
+          if (x >= a.x && x <= b.x) {
+            const t = (x - a.x) / (b.x - a.x || 1)
+            return a.y + (b.y - a.y) * t
+          }
+        }
+        return points[points.length - 1].y
+      }
+    }
+
+    function traceArea(ctx, points, yBaseFn) {
+      if (!points.length) return
+      ctx.beginPath()
+      ctx.moveTo(points[0].x, points[0].y)
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y)
+      ctx.lineTo(points[points.length - 1].x, yBaseFn(points[points.length - 1].x))
+      for (let i = points.length - 2; i >= 0; i--) {
+        ctx.lineTo(points[i].x, yBaseFn(points[i].x))
+      }
+      ctx.closePath()
+    }
+
+    function animateReveal(draw, duration = 900) {
+      // Readers who ask for reduced motion get the finished plate, not a sweep.
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        draw(1)
+        return
+      }
+      const start = performance.now()
+      function frame(now) {
+        const t = Math.min(1, (now - start) / duration)
+        draw(easeOutCubic(t))
+        if (t < 1) requestAnimationFrame(frame)
+      }
+      requestAnimationFrame(frame)
+    }
+
+    // --- chart 1: multi-series area ---
+    const areaData = [
+      { month: "Jan", revenue: 42, costs: 28 },
+      { month: "Feb", revenue: 48, costs: 30 },
+      { month: "Mar", revenue: 45, costs: 32 },
+      { month: "Apr", revenue: 58, costs: 34 },
+      { month: "May", revenue: 62, costs: 36 },
+      { month: "Jun", revenue: 71, costs: 38 },
+      { month: "Jul", revenue: 68, costs: 40 },
+      { month: "Aug", revenue: 74, costs: 39 },
+    ]
+
+    const areaSeries = [
+      { key: "revenue", color: PALETTE.indigo, label: "Revenue" },
+      { key: "costs", color: PALETTE.crimson, label: "Costs" },
+    ]
+
+    document.getElementById("area-legend").innerHTML = areaSeries.map((s) =>
+      `<span><i style="background:rgb(${s.color})"></i>${s.label}</span>`
+    ).join("")
+
+    function drawAreaChart(reveal) {
+      const canvas = document.getElementById("area-chart")
+      const { ctx, w, h } = setupCanvas(canvas)
+      const plot = {
+        x: MARGINS.left,
+        y: MARGINS.top,
+        width: w - MARGINS.left - MARGINS.right,
+        height: h - MARGINS.top - MARGINS.bottom,
+      }
+
+      const labels = areaData.map((d) => d.month)
+      const xScale = makePointScale(labels, [plot.x, plot.x + plot.width])
+      const maxY = Math.max(...areaData.flatMap((d) => [d.revenue, d.costs]))
+      const yScale = linearScale([0, maxY * 1.1], [plot.y + plot.height, plot.y])
+      const yTicks = [0, 20, 40, 60, 80].filter((t) => t <= maxY * 1.1)
+
+      ctx.clearRect(0, 0, w, h)
+      drawAxes(ctx, plot, labels, yTicks, yScale, (l) => xScale.center(l))
+
+      const revealX = plot.x + plot.width * reveal
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(plot.x, plot.y, revealX - plot.x, plot.height)
+      ctx.clip()
+
+      areaSeries.forEach((series, si) => {
+        const baseline = yScale(0)
+        const points = areaData.map((row) => ({
+          x: xScale.center(row.month),
+          y: yScale(row[series.key]),
+        }))
+        const yTop = interpolateCurve(points)
+        const yBase = () => baseline
+        const depth = Math.max(18, plot.height * 0.14)
+
+        ctx.save()
+        traceArea(ctx, points, yBase)
+        ctx.clip()
+        hatch(ctx, plot, toneBelowCurve(yTop, baseline, depth), {
+          angles: anglesForSeries(si),
+          color: series.color,
+          alpha: reveal,
+        })
+        ctx.restore()
+      })
+      ctx.restore()
+    }
+
+    // --- chart 2: bar ---
+    const barData = [
+      { q: "Q1", units: 1240 },
+      { q: "Q2", units: 1580 },
+      { q: "Q3", units: 1420 },
+      { q: "Q4", units: 1890 },
+    ]
+
+    function drawBarChart(reveal) {
+      const canvas = document.getElementById("bar-chart")
+      const { ctx, w, h } = setupCanvas(canvas)
+      const plot = {
+        x: MARGINS.left,
+        y: MARGINS.top,
+        width: w - MARGINS.left - MARGINS.right,
+        height: h - MARGINS.top - MARGINS.bottom,
+      }
+
+      const labels = barData.map((d) => d.q)
+      const xScale = makeBandScale(labels, [plot.x, plot.x + plot.width])
+      const maxY = Math.max(...barData.map((d) => d.units))
+      const yScale = linearScale([0, maxY * 1.15], [plot.y + plot.height, plot.y])
+      const yTicks = [0, 500, 1000, 1500, 2000]
+
+      ctx.clearRect(0, 0, w, h)
+      drawAxes(ctx, plot, labels, yTicks, yScale, (l) => xScale.center(l))
+
+      const revealX = plot.x + plot.width * reveal
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(plot.x, plot.y, revealX - plot.x, plot.height)
+      ctx.clip()
+
+      barData.forEach((row) => {
+        const cx = xScale.center(row.q)
+        const bw = xScale.bandwidth() * 0.72
+        const left = cx - bw / 2
+        const yTop = yScale(row.units)
+        const yBase = yScale(0)
+
+        ctx.save()
+        ctx.beginPath()
+        ctx.rect(left, yTop, bw, yBase - yTop)
+        ctx.clip()
+        hatch(ctx, { x: left, y: yTop, width: bw, height: yBase - yTop }, toneBlock(yTop, yBase), {
+          angles: anglesForSeries(0),
+          color: PALETTE.moss,
+          alpha: reveal,
+        })
+        ctx.restore()
+      })
+      ctx.restore()
+    }
+
+    // --- chart 3: sparkline ---
+    const lineData = [
+      { d: "M", v: 62 }, { d: "T", v: 58 }, { d: "W", v: 71 },
+      { d: "T", v: 65 }, { d: "F", v: 78 }, { d: "S", v: 74 }, { d: "S", v: 82 },
+    ]
+
+    function drawLineChart(reveal) {
+      const canvas = document.getElementById("line-chart")
+      const { ctx, w, h } = setupCanvas(canvas)
+      const plot = {
+        x: MARGINS.left,
+        y: MARGINS.top,
+        width: w - MARGINS.left - MARGINS.right,
+        height: h - MARGINS.top - MARGINS.bottom,
+      }
+
+      const labels = lineData.map((d, i) => String(i))
+      const xScale = makePointScale(labels, [plot.x + 8, plot.x + plot.width - 8])
+      const minY = Math.min(...lineData.map((d) => d.v))
+      const maxY = Math.max(...lineData.map((d) => d.v))
+      const yScale = linearScale([minY * 0.9, maxY * 1.05], [plot.y + plot.height, plot.y])
+
+      ctx.clearRect(0, 0, w, h)
+
+      const revealX = plot.x + plot.width * reveal
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(plot.x, plot.y, revealX - plot.x, plot.height)
+      ctx.clip()
+
+      const baseline = yScale(minY * 0.9)
+      const points = lineData.map((row, i) => ({
+        x: xScale.center(String(i)),
+        y: yScale(row.v),
+      }))
+      const yTop = interpolateCurve(points)
+      const depth = Math.max(10, plot.height * 0.35)
+
+      ctx.save()
+      traceArea(ctx, points, () => baseline)
+      ctx.clip()
+      hatch(ctx, plot, toneBelowCurve(yTop, baseline, depth), {
+        angles: anglesForSeries(0),
+        color: PALETTE.ochre,
+        alpha: reveal,
+      })
+      ctx.restore()
+      ctx.restore()
+    }
+
+    function renderAll() {
+      animateReveal((r) => { drawAreaChart(r); drawBarChart(r); drawLineChart(r) })
+    }
+
+    renderAll()
+    window.addEventListener("resize", () => {
+      drawAreaChart(1)
+      drawBarChart(1)
+      drawLineChart(1)
+    })
+  </script>
+</body>
+</html>
