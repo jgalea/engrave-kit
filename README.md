@@ -8,6 +8,8 @@
   </p>
 
   <p><strong>Charts drawn the way a copperplate engraver would draw them: no grey ink, tone built entirely from swelled hatch lines.</strong></p>
+
+  <img src="docs/assets/charts.png" alt="Engraved area, bar and line charts" width="100%">
 </div>
 
 ## What this is
@@ -16,7 +18,13 @@ A small React chart library that renders on canvas and fills every area, bar and
 
 A copperplate engraver has no grey ink. Tone comes from line work: lines cut closer together, and cut deeper. A deeper cut holds more ink and prints wider, so a single continuous line swells and tapers as it crosses light and dark passages. That swell is the tell. It's what your eye reads as "engraving" rather than "drawing".
 
+Zoom in and you can see it. Each line tapers to a hairline where the fill is light, and thickens as it runs into the dark. Nothing here is a texture or an overlay: the tone *is* the line work.
+
+![Detail of the hatching, showing lines swelling from hairline to full width](docs/assets/swell.png)
+
 Which is also why the existing hand-drawn chart libraries can't get here. [rough.js](https://github.com/rough-stuff/rough) and everything built on it (chart.xkcd, roughViz) are deliberately *wobbly*: roughness and bowing are the point, and wobble reads as pencil. engrave-kit's lines are dead straight and perfectly parallel. Only their width moves.
+
+Live demo: **[jgalea.github.io/engrave-kit](https://jgalea.github.io/engrave-kit/)**
 
 ## Install
 
@@ -65,7 +73,24 @@ const config = {
 
 Series hatch at alternating angles (-38°, +38°, then cross-hatch), so overlapping fills stay separable in the way engravers kept adjacent objects legible in a single ink.
 
-Colours come from a closed set of named inks rather than arbitrary hex, the way a print shop stocks a drawer rather than mixing to order.
+Bars and lines take the same shape:
+
+```tsx
+<BarChart data={quarters} config={{ units: { label: "Units", color: "moss" } }}>
+  <Grid />
+  <XAxis dataKey="quarter" />
+  <YAxis />
+  <Bar dataKey="units" />
+</BarChart>
+
+<LineChart data={days} config={{ signal: { label: "Signal", color: "ochre" } }}>
+  <Line dataKey="signal" />
+</LineChart>
+```
+
+Stack an area chart by passing `stackType="stacked"` to the root.
+
+Colours come from a closed set of named inks rather than arbitrary hex, the way a print shop stocks a drawer rather than mixing to order: `ink`, `crimson`, `indigo`, `moss`, `ochre`, `slate`.
 
 ## The one file that matters
 
