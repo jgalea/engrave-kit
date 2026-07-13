@@ -1,11 +1,13 @@
 <div align="center">
+  <h1>engrave-kit</h1>
 
-# engrave-kit
+  <p>
+    <a href="https://jgalea.github.io/engrave-kit/"><img alt="Docs" src="https://img.shields.io/badge/DEMO-jgalea.github.io-F5A623?style=for-the-badge"></a>
+    <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/LICENSE-MIT-5C9E31?style=for-the-badge"></a>
+    <a href="https://rebelcode.com"><img alt="Built by" src="https://img.shields.io/badge/BUILT%20BY-REBELCODE-8A2BE2?style=for-the-badge"></a>
+  </p>
 
-<!-- BADGES: filled in after the demo + repo URLs are live and verified -->
-
-**Charts drawn the way a copperplate engraver would draw them: no grey ink, tone built entirely from swelled hatch lines.**
-
+  <p><strong>Charts drawn the way a copperplate engraver would draw them: no grey ink, tone built entirely from swelled hatch lines.</strong></p>
 </div>
 
 ## What this is
