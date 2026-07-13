@@ -135,12 +135,24 @@ export function ChartProvider({
     setSeries((prev) => prev.filter((s) => s.dataKey !== dataKey))
   }, [])
 
+  // Bail when nothing actually changed. Spreading unconditionally returns a new
+  // object every call, so a consumer passing an inline `tickFormatter` (a fresh
+  // identity each render) would re-render forever. Registration must be a no-op
+  // when the values match.
   const setXAxis = useCallback((axis: Partial<XAxisState>) => {
-    setXAxisState((prev) => ({ ...prev, ...axis }))
+    setXAxisState((prev) =>
+      (Object.keys(axis) as (keyof XAxisState)[]).every((k) => prev[k] === axis[k])
+        ? prev
+        : { ...prev, ...axis }
+    )
   }, [])
 
   const setYAxis = useCallback((axis: Partial<YAxisState>) => {
-    setYAxisState((prev) => ({ ...prev, ...axis }))
+    setYAxisState((prev) =>
+      (Object.keys(axis) as (keyof YAxisState)[]).every((k) => prev[k] === axis[k])
+        ? prev
+        : { ...prev, ...axis }
+    )
   }, [])
 
   const plot = useMemo(

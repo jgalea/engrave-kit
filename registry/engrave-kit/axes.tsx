@@ -21,9 +21,15 @@ function pickTicks<T>(items: T[], max: number): T[] {
   return items.filter((_, i) => i % step === 0)
 }
 
+// Hoisted, not default parameters. A default like `tickFormatter = (v) => ...`
+// mints a fresh function on every render, and these land in the effect deps
+// below: the effect would re-run each render, set axis state, re-render, and
+// loop until React throws "Maximum update depth exceeded".
+const defaultTickFormatter = (v: unknown) => String(v)
+
 export function XAxis({
   dataKey,
-  tickFormatter = (v) => String(v),
+  tickFormatter = defaultTickFormatter,
   maxTicks = 8,
 }: XAxisProps) {
   const { data, plot, xScale, xAxis, setXAxis } = useChartContext()
@@ -70,7 +76,7 @@ export function XAxis({
 }
 
 export function YAxis({
-  tickFormatter = (v) => String(v),
+  tickFormatter = defaultTickFormatter,
   tickCount = 5,
 }: YAxisProps) {
   const { plot, yScale, yAxis, setYAxis } = useChartContext()
