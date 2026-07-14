@@ -9,7 +9,7 @@
 
   <p><strong>Charts drawn the way a copperplate engraver would draw them: no grey ink, tone built entirely from swelled hatch lines.</strong></p>
 
-  <img src="docs/assets/charts.png" alt="Engraved area, bar and line charts" width="100%">
+  <img src="docs/assets/charts.png" alt="Engraved area, bar and line charts, and an area with a trend line cut over it" width="100%">
 </div>
 
 ## What this is

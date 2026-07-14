@@ -45,6 +45,19 @@ function stubCanvas() {
 
 beforeAll(() => {
   stubCanvas()
+  // jsdom has no Path2D. The painter coalesces each run of same-width samples into
+  // one, so record the calls here to keep "did it lay ink" assertable.
+  vi.stubGlobal(
+    "Path2D",
+    class {
+      moveTo() {
+        calls.push("moveTo")
+      }
+      lineTo() {
+        calls.push("lineTo")
+      }
+    }
+  )
   // Charts size themselves from a ResizeObserver; jsdom lays everything out at 0,
   // so hand them a real box or nothing paints.
   vi.stubGlobal(

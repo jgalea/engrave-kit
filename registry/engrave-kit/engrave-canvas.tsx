@@ -249,6 +249,12 @@ export function EngraveCanvas() {
     <canvas
       ref={canvasRef}
       className="absolute inset-0 block h-full w-full"
+      // Pinned inline, not left to the utility classes. The canvas MUST stay out of
+      // normal flow: its height is set from the measured container, so if it ever
+      // lands in flow it grows the container, which is measured again, and the
+      // canvas runs away to tens of thousands of pixels until the tab dies. A
+      // consumer without Tailwind (or with it purged) would hit exactly that.
+      style={{ position: "absolute", inset: 0, display: "block" }}
       aria-hidden
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
