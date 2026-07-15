@@ -17,15 +17,15 @@
 
 ## What this is
 
-A small React chart library that renders on canvas and fills every area, bar and band with engraved hatching instead of solid colour.
+A small React chart library that renders on canvas. Every area, bar and band is built from engraved line work instead of solid colour: an area is a swelling contour cut over sparse hatched ground, and bars fill with the same hatch.
 
 A copperplate engraver has no grey ink. Tone comes from line work: lines cut closer together, and cut deeper. A deeper cut holds more ink and prints wider, so a single continuous line swells and tapers as it crosses light and dark passages. That swell is the tell. It's what your eye reads as "engraving" rather than "drawing".
 
-Zoom in and you can see it. Each line tapers to a hairline where the fill is light, and thickens as it runs into the dark. Nothing here is a texture or an overlay: the tone *is* the line work.
+Zoom in and you can see it. The top edge is cut as one swelling line, a hairline where the shape is shallow and thickening as it climbs, sitting over a sparse hatch that gives the fill its tone. Nothing here is a texture or an overlay: the tone *is* the line work.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/swell-dark.png">
-  <img src="docs/assets/swell.png" alt="Detail of the hatching, showing lines swelling from hairline to full width" width="100%">
+  <img src="docs/assets/swell.png" alt="Detail of an area: a swelling contour line cut over sparse engraved hatching" width="100%">
 </picture>
 
 Which is also why the existing hand-drawn chart libraries can't get here. [rough.js](https://github.com/rough-stuff/rough) and everything built on it (chart.xkcd, roughViz) are deliberately *wobbly*: roughness and bowing are the point, and wobble reads as pencil. engrave-kit's lines are dead straight and perfectly parallel. Only their width moves.

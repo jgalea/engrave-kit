@@ -180,11 +180,25 @@ export function EngraveCanvas() {
           traceAreaPath(c, data, xAxis.dataKey, xScale, later.yTop, later.yBase)
         }
         c.clip(occluders.length ? "evenodd" : "nonzero")
+        // Sparse hatch as ground, not a solid block: wider spacing and a thinner
+        // top width let the paper read through, so the fill sits back and the
+        // contour below carries the shape.
         hatch(c, plot, toneBetweenCurves(curves.yTop, curves.yBase, depth), {
           angles,
           color,
           alpha: reveal,
+          spacing: 9,
+          minWidth: 0.28,
+          maxWidth: 1.0,
+          floor: 0.05,
         })
+        c.restore()
+
+        // The burin line is the hero. Cut the area's top edge as one swelling
+        // stroke over the hatched ground — this is the line-work the whole style
+        // is about, and it's what your eye reads first.
+        c.save()
+        strokeCurve(c, plot, curves.yTop, { color, width: 1.7, alpha: reveal })
         c.restore()
       })
 
