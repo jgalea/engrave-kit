@@ -9,10 +9,7 @@
 
   <p><strong>Charts drawn the way a copperplate engraver would draw them: no grey ink, tone built entirely from swelled hatch lines.</strong></p>
 
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/charts-dark.png">
-    <img src="docs/assets/charts.png" alt="Engraved area, bar and line charts, and an area with a trend line cut over it" width="100%">
-  </picture>
+  <img src="docs/assets/charts.png" alt="Engraved area, bar and line charts, and an area with a trend line cut over it" width="100%">
 </div>
 
 ## What this is
@@ -23,10 +20,7 @@ A copperplate engraver has no grey ink. Tone comes from line work: lines cut clo
 
 Zoom in and you can see it. The top edge is cut as one swelling line, a hairline where the shape is shallow and thickening as it climbs, sitting over a sparse hatch that gives the fill its tone. Nothing here is a texture or an overlay: the tone *is* the line work.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/swell-dark.png">
-  <img src="docs/assets/swell.png" alt="Detail of an area: a swelling contour line cut over sparse engraved hatching" width="100%">
-</picture>
+<img src="docs/assets/swell.png" alt="Detail of an area: a swelling contour line cut over sparse engraved hatching" width="100%">
 
 Which is also why the existing hand-drawn chart libraries can't get here. [rough.js](https://github.com/rough-stuff/rough) and everything built on it (chart.xkcd, roughViz) are deliberately *wobbly*: roughness and bowing are the point, and wobble reads as pencil. engrave-kit's lines are dead straight and perfectly parallel. Only their width moves.
 
