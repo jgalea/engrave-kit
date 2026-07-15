@@ -150,16 +150,36 @@ export function EngraveCanvas() {
 
         const depth = Math.max(18, plot.height * 0.14)
 
+        // A nearer object occludes a farther one — an engraver never weaves two
+        // ground tones over each other, the front fill simply covers what's
+        // behind it. So each area only hatches where it rises above the areas
+        // drawn in front of it (later series). Own outline plus every later area
+        // outline, clipped even-odd, leaves exactly that sliver: the shared band
+        // cancels out. Single-area and stacked charts have nothing to subtract,
+        // so they're untouched.
+        const occluders = series
+          .slice(seriesIndex + 1)
+          .filter((s) => s.kind !== "line" && s.kind !== "bar")
+          .map((s) =>
+            buildCurveLookup({
+              data,
+              dataKey: s.dataKey,
+              keys,
+              layers,
+              stackType,
+              xScale,
+              yScale,
+              xKey: xAxis.dataKey,
+            })
+          )
+
         c.save()
-        traceAreaPath(
-          c,
-          data,
-          xAxis.dataKey,
-          xScale,
-          curves.yTop,
-          curves.yBase
-        )
-        c.clip()
+        c.beginPath()
+        traceAreaPath(c, data, xAxis.dataKey, xScale, curves.yTop, curves.yBase)
+        for (const later of occluders) {
+          traceAreaPath(c, data, xAxis.dataKey, xScale, later.yTop, later.yBase)
+        }
+        c.clip(occluders.length ? "evenodd" : "nonzero")
         hatch(c, plot, toneBetweenCurves(curves.yTop, curves.yBase, depth), {
           angles,
           color,
@@ -419,7 +439,8 @@ function traceAreaPath(
   const x0 = xCenter(xScale, first)
   const x1 = xCenter(xScale, last)
 
-  c.beginPath()
+  // Caller owns beginPath: this subpath may be one of several composed into a
+  // single clip (see the area occlusion pass), so it must not reset the path.
   c.moveTo(x0, yTop(x0))
   for (let i = 1; i < data.length; i++) {
     const label = String(data[i][xKey] ?? "")
